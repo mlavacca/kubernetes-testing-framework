@@ -18,6 +18,9 @@ import (
 	netv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayclient "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
+
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -98,6 +101,29 @@ func GetIngressLoadbalancerStatus(ctx context.Context, c Cluster, namespace stri
 	default:
 		return nil, fmt.Errorf("%T is not a supported ingress type", ingress)
 	}
+}
+
+// DeployGatewayClass
+func DeployGatewayClass(ctx context.Context, cluster Cluster, controllerName gatewayv1alpha2.GatewayController) error {
+	gwc := &gatewayv1alpha2.GatewayClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: uuid.NewString(),
+		},
+		Spec: gatewayv1alpha2.GatewayClassSpec{
+			ControllerName: controllerName,
+		},
+	}
+
+	c, err := gatewayclient.NewForConfig(cluster.Config())
+	if err != nil {
+		return err
+	}
+
+	if _, err = c.GatewayV1alpha2().GatewayClasses().Create(ctx, gwc, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CreateNamespace creates a new namespace in the given cluster provided a name.
